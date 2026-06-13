@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pinefinders Upload Dashboard</title>
+<style>
+:root { color-scheme: light; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f0e8e0;
+  min-height: 100vh;
+  padding: 18px;
+  color: #2c1810;
+}
+
+.container { max-width: 1200px; margin: 0 auto; }
+
+/* Header */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  background: white; padding: 14px 18px; border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 14px; gap: 12px; flex-wrap: wrap;
+}
+.header-left h1 { font-size: 18px; color: #3d2b1f; }
+.header-left p { font-size: 12px; color: #8a6348; margin-top: 3px; }
+.progress-bar { width: 180px; height: 5px; background: #e8ddd5; border-radius: 3px; margin-top: 7px; overflow: hidden; }
+.progress-fill { height: 100%; background: #4caf50; border-radius: 3px; transition: width 0.3s; }
+
+/* Transcript Panel */
+.transcript-panel {
+  background: white; border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 14px; overflow: hidden;
+}
+.transcript-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 13px 18px; cursor: pointer; user-select: none;
+  border-bottom: 1px solid transparent; transition: background 0.15s;
+}
+.transcript-header:hover { background: #faf6f3; }
+.transcript-header.open { border-bottom-color: #f0e8e0; }
+.transcript-header-left { display: flex; align-items: center; gap: 10px; }
+.transcript-header h2 { font-size: 14px; color: #3d2b1f; font-weight: 600; }
+.transcript-header p { font-size: 12px; color: #9e7a5e; }
+.arrow { font-size: 11px; color: #9e7a5e; transition: transform 0.2s; }
+.arrow.open { transform: rotate(180deg); }
+.transcript-body { padding: 16px 18px; display: none; }
+.transcript-body.open { display: block; }
+
+textarea#transcript-input {
+  width: 100%; height: 140px; padding: 10px 12px;
+  border: 1px solid #d4b89a; border-radius: 8px; font-size: 13px;
+  font-family: inherit; color: #2c1810; resize: vertical; outline: none;
+  line-height: 1.5;
+}
+textarea#transcript-input:focus { border-color: #8a5d3b; box-shadow: 0 0 0 2px rgba(138,93,59,0.12); }
+textarea#transcript-input::placeholder { color: #bba08a; }
+
+.transcript-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+
+.btn-process {
+  background: #3d2b1f; color: white; border: none;
+  padding: 10px 20px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+}
+.btn-process:hover { background: #5a3d2b; }
+.btn-process:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-clear-transcript {
+  background: white; color: #9e7a5e; border: 1px solid #d4b89a;
+  padding: 10px 16px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-family: inherit;
+}
+.btn-clear-transcript:hover { background: #f5f0eb; }
+
+.processing-msg { font-size: 13px; color: #7a5c44; display: flex; align-items: center; gap: 8px; }
+.spinner {
+  width: 16px; height: 16px; border: 2px solid #d4b89a;
+  border-top-color: #3d2b1f; border-radius: 50%;
+  animation: spin 0.8s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-msg {
+  background: #fdf0ee; border: 1px solid #e8c0b8;
+  border-radius: 6px; padding: 8px 12px; font-size: 13px; color: #c0392b;
+  margin-top: 10px;
+}
+
+/* Grid */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(285px, 1fr)); gap: 14px; }
+
+.empty-state {
+  grid-column: 1 / -1; text-align: center; padding: 60px 20px;
+  color: #b08060; font-size: 14px;
+}
+.empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { margin-top: 6px; font-size: 13px; color: #c0a080; }
+
+/* Cards */
+.card {
+  background: white; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 2px solid transparent; transition: border-color 0.2s;
+}
+.card.approved { border-color: #4caf50; }
+
+.photo-area {
+  height: 145px; background: #f0e8e0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.photo-area img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-placeholder { text-align: center; color: #b08060; }
+.photo-placeholder .ico { font-size: 26px; }
+.photo-placeholder .lbl { font-size: 11px; margin-top: 3px; }
+.photo-area:hover .photo-placeholder { opacity: 0.7; }
+
+.card-body { padding: 11px 13px 13px; }
+.flag { background: #fff8e1; border: 1px solid #ffc107; border-radius: 4px; padding: 5px 9px; font-size: 11px; margin-bottom: 9px; color: #7a5500; }
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
+.card-title { font-size: 13px; font-weight: 700; color: #3d2b1f; line-height: 1.3; }
+.card-code { font-size: 11px; color: #9e7a5e; font-family: monospace; margin-top: 2px; }
+.badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: #f0e8e0; color: #7a5c44; white-space: nowrap; flex-shrink: 0; }
+.card-desc { font-size: 12px; color: #666; line-height: 1.4; margin: 7px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.prices { display: flex; gap: 6px; margin: 8px 0; }
+.price-box { flex: 1; background: #f5f0eb; border-radius: 6px; padding: 6px 8px; text-align: center; }
+.price-label { font-size: 10px; color: #9e7a5e; text-transform: uppercase; letter-spacing: 0.4px; }
+.price-val { font-size: 16px; font-weight: 700; color: #3d2b1f; }
+.dims { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 5px; }
+.dim-item { background: #f5f0eb; padding: 3px 7px; border-radius: 4px; font-size: 11px; color: #3d2b1f; }
+.dim-label { color: #9e7a5e; }
+.extra-note { font-size: 11px; color: #7a5c44; margin-bottom: 7px; }
+.card-actions { display: flex; gap: 7px; margin-top: 11px; flex-wrap: wrap; }
+
+.btn-edit { flex: 1; min-width: 55px; padding: 7px; border: 1px solid #d4b89a; background: white; border-radius: 6px; cursor: pointer; font-size: 12px; color: #7a5c44; font-family: inherit; }
+.btn-edit:hover { background: #f5f0eb; }
+.btn-preview { flex: 1; min-width: 55px; padding: 7px; border: 1px solid #b8d4b0; background: white; border-radius: 6px; cursor: pointer; font-size: 12px; color: #3a6b30; font-family: inherit; }
+.btn-preview:hover { background: #f0f8ee; }
+.btn-approve { flex: 1; min-width: 65px; padding: 7px; border: none; background: #3d2b1f; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit; }
+.btn-approve:hover { background: #5a3d2b; }
+.btn-approve.ok { background: #4caf50; }
+.btn-approve.ok:hover { background: #388e3c; }
+.btn-delete { padding: 7px 10px; border: 1px solid #e8c0b8; background: white; border-radius: 6px; cursor: pointer; font-size: 12px; color: #c0392b; font-family: inherit; }
+.btn-delete:hover { background: #fdf0ee; }
+
+/* Header buttons */
+.header-btns { display: flex; gap: 8px; flex-shrink: 0; }
+.btn-export { background: #3d2b1f; color: white; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.btn-export:hover { background: #5a3d2b; }
+.btn-clear-all { background: white; color: #c0392b; border: 1px solid #e8c0b8; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+.btn-clear-all:hover { background: #fdf0ee; }
+
+/* Modals */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.modal { background: white; border-radius: 12px; padding: 22px; width: min(540px, 100%); max-height: 90vh; overflow-y: auto; }
+.modal h2 { font-size: 16px; color: #3d2b1f; margin-bottom: 16px; }
+.preview-modal { background: white; border-radius: 12px; padding: 24px; width: min(600px, 100%); max-height: 90vh; overflow-y: auto; }
+.preview-modal h2 { font-size: 16px; color: #3d2b1f; margin-bottom: 4px; }
+.preview-subtitle { font-size: 12px; color: #9e7a5e; margin-bottom: 16px; }
+.preview-box { background: #fafaf8; border: 1px solid #e0d8d0; border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.7; color: #2c1810; white-space: pre-wrap; font-family: Georgia, serif; }
+.preview-meta { margin-top: 14px; padding-top: 14px; border-top: 1px solid #e8e0d8; }
+.preview-meta p { font-size: 12px; color: #7a5c44; margin-bottom: 4px; }
+.preview-meta strong { color: #3d2b1f; }
+
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 11px; color: #7a5c44; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+.field input, .field textarea, .field select { width: 100%; padding: 7px 9px; border: 1px solid #d4b89a; border-radius: 6px; font-size: 13px; font-family: inherit; color: #2c1810; outline: none; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: #8a5d3b; box-shadow: 0 0 0 2px rgba(138,93,59,0.12); }
+.field textarea { resize: vertical; }
+.field-hint { font-size: 11px; color: #9e7a5e; margin-top: 3px; }
+.row2 { display: flex; gap: 10px; }
+.row2 .field { flex: 1; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.row3 .field { margin-bottom: 0; }
+.section-divider { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9e7a5e; border-top: 1px solid #f0e8e0; margin: 14px 0 12px; padding-top: 12px; }
+.check-label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; margin-bottom: 10px; color: #3d2b1f; }
+.check-label input { width: auto; cursor: pointer; }
+.modal-btns { display: flex; gap: 10px; margin-top: 6px; }
+.btn-cancel { flex: 1; padding: 9px; border: 1px solid #d4b89a; background: white; border-radius: 6px; cursor: pointer; font-size: 13px; color: #7a5c44; font-family: inherit; }
+.btn-cancel:hover { background: #f5f0eb; }
+.btn-save { flex: 1; padding: 9px; border: none; background: #3d2b1f; color: white; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; }
+.btn-save:hover { background: #5a3d2b; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Pinefinders Upload Dashboard</h1>
+      <p id="status-text">No items yet — paste a transcript below to get started</p>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+    <div class="header-btns">
+      <button class="btn-clear-all" onclick="clearAll()">Clear All</button>
+      <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <!-- Transcript Panel -->
+  <div class="transcript-panel">
+    <div class="transcript-header open" id="panel-header" onclick="togglePanel()">
+      <div class="transcript-header-left">
+        <div>
+          <h2>Process New Transcript</h2>
+          <p>Paste a voice recording transcript to extract and describe items automatically</p>
+        </div>
+      </div>
+      <span class="arrow open" id="panel-arrow">▼</span>
+    </div>
+    <div class="transcript-body open" id="panel-body">
+      <textarea id="transcript-input" placeholder="Paste your transcript here — Ken's voice recording describing the items, prices, dimensions and codes..."></textarea>
+      <div class="transcript-actions">
+        <button class="btn-process" id="process-btn" onclick="processTranscript()">Process Transcript</button>
+        <button class="btn-clear-transcript" onclick="document.getElementById('transcript-input').value=''">Clear</button>
+        <div class="processing-msg" id="processing-msg" style="display:none">
+          <div class="spinner"></div>
+          Processing transcript with AI — this takes a few seconds…
+        </div>
+      </div>
+      <div class="error-msg" id="error-msg" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid" id="grid">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">📋</div>
+      <strong>No items yet</strong>
+      <p>Paste a transcript above and click Process to generate listings automatically.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Edit Overlay -->
+<div id="edit-overlay" class="overlay" style="display:none" onclick="overlayClick(event,'edit-overlay')">
+  <div class="modal" id="edit-modal"></div>
+</div>
+
+<!-- Preview Overlay -->
+<div id="preview-overlay" class="overlay" style="display:none" onclick="overlayClick(event,'preview-overlay')">
+  <div class="preview-modal" id="preview-modal"></div>
+</div>
+
+<script>
+const CATS = ["Bookcases","Boxes","Seating","Chests of drawers","Cupboards","Desks","Dressers","Tables","Wardrobes","Beds & Miscellaneous"];
+
+const CAT_PAGES = {
+  "Bookcases":            "antique-pine-bookcases",
+  "Boxes":                "antique-pine-boxes-chests",
+  "Seating":              "pine-benches-chairs",
+  "Chests of drawers":    "antique-pine-chests-of-drawers",
+  "Cupboards":            "antique-pine-cupboards",
+  "Desks":                "antique-pine-desks",
+  "Dressers":             "antique-pine-dressers",
+  "Tables":               "pine-tables",
+  "Wardrobes":            "antique-pine-wardrobes",
+  "Beds & Miscellaneous": "miscellaneous-furniture"
+};
+
+let items = [];
+let nextId = 0;
+let editId = null;
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toSlug(str){ return str.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').trim(); }
+
+function buildFullTitle(item){ return item.title + ' (' + item.code + ')'; }
+
+function buildPriceLine(item){
+  if(item.single) return 'Price: £' + item.priceRestored + ' fully restored and waxed.';
+  return 'Price: £' + item.priceCurrent + ' in current condition, or £' + item.priceRestored + ' fully restored and waxed.';
+}
+
+function buildDimLine(item){
+  let line = 'Dimensions: Height ' + item.height + ', width ' + item.width + ', depth ' + item.depth + '.';
+  if(item.extra) line += ' ' + item.extra + '.';
+  return line;
+}
+
+function buildFullDescription(item){
+  return item.description + '\n\nCode: ' + item.code + '\n\n' + buildPriceLine(item) + '\n\n' + buildDimLine(item);
+}
+
+function buildHtmlDescription(item){
+  return buildFullDescription(item).split('\n\n')
+    .map(p => '<p>' + p.trim().replace(/\n/g,' ').replace(/£/g,'&pound;') + '</p>')
+    .join('');
+}
+
+// Panel toggle
+function togglePanel(){
+  const body = document.getElementById('panel-body');
+  const header = document.getElementById('panel-header');
+  const arrow = document.getElementById('panel-arrow');
+  const open = body.classList.contains('open');
+  body.classList.toggle('open', !open);
+  header.classList.toggle('open', !open);
+  arrow.classList.toggle('open', !open);
+}
+
+// Process transcript
+async function processTranscript(){
+  const transcript = document.getElementById('transcript-input').value.trim();
+  if(!transcript){ showError('Please paste a transcript first.'); return; }
+
+  const btn = document.getElementById('process-btn');
+  const msg = document.getElementById('processing-msg');
+  const errEl = document.getElementById('error-msg');
+
+  btn.disabled = true;
+  msg.style.display = 'flex';
+  errEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript })
+    });
+
+    const data = await res.json();
+
+    if(!res.ok || data.error){
+      throw new Error(data.error || 'Something went wrong.');
+    }
+
+    if(!Array.isArray(data.items) || data.items.length === 0){
+      throw new Error('No items were extracted from the transcript. Please check the transcript and try again.');
+    }
+
+    // Add items to the dashboard
+    data.items.forEach(item => {
+      items.push({
+        id: nextId++,
+        title: item.title || '',
+        code: item.code || '',
+        category: item.category || 'Beds & Miscellaneous',
+        description: item.description || '',
+        priceCurrent: Number(item.priceCurrent) || 0,
+        priceRestored: Number(item.priceRestored) || 0,
+        single: !!item.single,
+        height: item.height || '',
+        width: item.width || '',
+        depth: item.depth || '',
+        extra: item.extra || '',
+        photo: null,
+        approved: false,
+        flag: null
+      });
+    });
+
+    document.getElementById('transcript-input').value = '';
+    togglePanel(); // Collapse panel after processing
+    render();
+
+  } catch(err){
+    showError(err.message);
+  } finally {
+    btn.disabled = false;
+    msg.style.display = 'none';
+  }
+}
+
+function showError(msg){
+  const el = document.getElementById('error-msg');
+  el.textContent = '⚠️ ' + msg;
+  el.style.display = 'block';
+}
+
+function render(){
+  const n = items.filter(i=>i.approved).length;
+  const total = items.length;
+  document.getElementById('status-text').textContent = total === 0
+    ? 'No items yet — paste a transcript below to get started'
+    : n + ' of ' + total + ' items approved';
+  document.getElementById('progress-fill').style.width = total > 0 ? (n/total*100)+'%' : '0%';
+
+  const grid = document.getElementById('grid');
+
+  if(total === 0){
+    grid.innerHTML = '<div class="empty-state" id="empty-state"><div class="empty-icon">📋</div><strong>No items yet</strong><p>Paste a transcript above and click Process to generate listings automatically.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = items.map(item => {
+    const ph = item.photo
+      ? '<img src="' + item.photo + '" alt="' + esc(item.title) + '">'
+      : '<div class="photo-placeholder"><div class="ico">📷</div><div class="lbl">Click to add photo</div></div>';
+
+    const waxBox = item.single ? '' :
+      '<div class="price-box"><div class="price-label">Restored &amp; Waxed</div><div class="price-val">£' + item.priceRestored + '</div></div>';
+
+    return '<div class="card' + (item.approved?' approved':'') + '">'
+      + '<div class="photo-area" onclick="document.getElementById(\'fi'+item.id+'\').click()">'
+      + ph
+      + '<input type="file" id="fi'+item.id+'" accept="image/*" style="display:none" onchange="loadPhoto('+item.id+',this)">'
+      + '</div>'
+      + '<div class="card-body">'
+      + (item.flag ? '<div class="flag">'+esc(item.flag)+'</div>' : '')
+      + '<div class="card-top"><div><div class="card-title">'+esc(item.title)+'</div><div class="card-code">'+esc(item.code)+'</div></div><div class="badge">'+esc(item.category)+'</div></div>'
+      + '<div class="card-desc">'+esc(item.description)+'</div>'
+      + '<div class="prices">'
+      + (item.single
+          ? '<div class="price-box"><div class="price-label">Restored &amp; Waxed</div><div class="price-val">£'+item.priceRestored+'</div></div>'
+          : '<div class="price-box"><div class="price-label">Current Condition</div><div class="price-val">£'+item.priceCurrent+'</div></div>' + waxBox)
+      + '</div>'
+      + '<div class="dims">'
+      + '<div class="dim-item"><span class="dim-label">H </span>'+esc(item.height)+'</div>'
+      + '<div class="dim-item"><span class="dim-label">W </span>'+esc(item.width)+'</div>'
+      + '<div class="dim-item"><span class="dim-label">D </span>'+esc(item.depth)+'</div>'
+      + '</div>'
+      + (item.extra ? '<div class="extra-note">'+esc(item.extra)+'</div>' : '')
+      + '<div class="card-actions">'
+      + '<button class="btn-edit" onclick="openEdit('+item.id+')">✏ Edit</button>'
+      + '<button class="btn-preview" onclick="openPreview('+item.id+')">👁 Preview</button>'
+      + '<button class="btn-approve'+(item.approved?' ok':'')+'" onclick="toggleApprove('+item.id+')">'+(item.approved?'✓ Done':'Approve')+'</button>'
+      + '<button class="btn-delete" onclick="deleteItem('+item.id+')" title="Delete">🗑</button>'
+      + '</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function loadPhoto(id, input){
+  const file = input.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = e => { items.find(i=>i.id===id).photo = e.target.result; render(); };
+  r.readAsDataURL(file);
+}
+
+function toggleApprove(id){
+  const item = items.find(i=>i.id===id);
+  item.approved = !item.approved;
+  render();
+}
+
+function deleteItem(id){
+  if(!confirm('Delete this item?')) return;
+  items = items.filter(i=>i.id!==id);
+  render();
+}
+
+function clearAll(){
+  if(items.length === 0) return;
+  if(!confirm('Clear all ' + items.length + ' items from the dashboard?')) return;
+  items = [];
+  render();
+}
+
+function openPreview(id){
+  const item = items.find(i=>i.id===id);
+  document.getElementById('preview-modal').innerHTML =
+    '<h2>'+esc(buildFullTitle(item))+'</h2>'
+    +'<p class="preview-subtitle">How this listing will appear on the website</p>'
+    +'<div class="preview-box">'+esc(buildFullDescription(item))+'</div>'
+    +'<div class="preview-meta">'
+    +'<p><strong>Title:</strong> '+esc(buildFullTitle(item))+'</p>'
+    +'<p><strong>Tags / SKU:</strong> '+esc(item.code)+'</p>'
+    +'<p><strong>Category page:</strong> '+esc(item.category)+'</p>'
+    +'</div>'
+    +'<div class="modal-btns" style="margin-top:16px">'
+    +'<button class="btn-cancel" onclick="closeOverlay(\'preview-overlay\')">Close</button>'
+    +'<button class="btn-save" onclick="closeOverlay(\'preview-overlay\');openEdit('+id+')">Edit Item</button>'
+    +'</div>';
+  document.getElementById('preview-overlay').style.display='flex';
+}
+
+function openEdit(id){
+  editId = id;
+  const item = items.find(i=>i.id===id);
+  const catOpts = CATS.map(c=>'<option value="'+esc(c)+'"'+(c===item.category?' selected':'')+'>'+esc(c)+'</option>').join('');
+  document.getElementById('edit-modal').innerHTML =
+    '<h2>Edit Item</h2>'
+    +'<div class="field"><label>Title <span style="font-weight:400;text-transform:none;letter-spacing:0">(code added automatically)</span></label><input id="e-title" value="'+esc(item.title)+'"></div>'
+    +'<div class="row2"><div class="field"><label>Stock Code</label><input id="e-code" value="'+esc(item.code)+'"></div><div class="field"><label>Category</label><select id="e-cat">'+catOpts+'</select></div></div>'
+    +'<div class="field"><label>Description (marketing copy only — no code/price/dimensions)</label><textarea id="e-desc" rows="6">'+esc(item.description)+'</textarea><div class="field-hint">Code, price and dimensions are added automatically at the bottom.</div></div>'
+    +'<div class="section-divider">Pricing</div>'
+    +'<label class="check-label"><input type="checkbox" id="e-single" '+(item.single?'checked':'')+' onchange="toggleSingle(this)"> Single price only — item already restored and waxed</label>'
+    +'<div class="row2"><div class="field"><label>Current Condition (£)</label><input id="e-p1" type="number" value="'+item.priceCurrent+'" '+(item.single?'disabled style="opacity:0.4"':'')+'></div><div class="field"><label>Restored &amp; Waxed (£)</label><input id="e-p2" type="number" value="'+item.priceRestored+'"></div></div>'
+    +'<div class="section-divider">Dimensions</div>'
+    +'<div class="row3"><div class="field"><label>Height</label><input id="e-h" value="'+esc(item.height)+'"></div><div class="field"><label>Width</label><input id="e-w" value="'+esc(item.width)+'"></div><div class="field"><label>Depth</label><input id="e-d" value="'+esc(item.depth)+'"></div></div>'
+    +'<div class="field" style="margin-top:10px"><label>Extra measurements / notes</label><input id="e-extra" value="'+esc(item.extra)+'"></div>'
+    +'<div class="modal-btns" style="margin-top:16px"><button class="btn-cancel" onclick="closeOverlay(\'edit-overlay\')">Cancel</button><button class="btn-save" onclick="saveEdit()">Save Changes</button></div>';
+  document.getElementById('edit-overlay').style.display='flex';
+}
+
+function toggleSingle(cb){
+  const p1 = document.getElementById('e-p1');
+  p1.disabled = cb.checked; p1.style.opacity = cb.checked?'0.4':'1';
+}
+
+function closeOverlay(id){
+  document.getElementById(id).style.display='none';
+  if(id==='edit-overlay') editId=null;
+}
+
+function overlayClick(e,id){ if(e.target===document.getElementById(id)) closeOverlay(id); }
+
+function saveEdit(){
+  const item = items.find(i=>i.id===editId); if(!item) return;
+  item.title       = document.getElementById('e-title').value;
+  item.code        = document.getElementById('e-code').value;
+  item.category    = document.getElementById('e-cat').value;
+  item.description = document.getElementById('e-desc').value;
+  item.priceCurrent  = parseFloat(document.getElementById('e-p1').value)||0;
+  item.priceRestored = parseFloat(document.getElementById('e-p2').value)||0;
+  item.single      = document.getElementById('e-single').checked;
+  item.height      = document.getElementById('e-h').value;
+  item.width       = document.getElementById('e-w').value;
+  item.depth       = document.getElementById('e-d').value;
+  item.extra       = document.getElementById('e-extra').value;
+  item.flag        = null;
+  closeOverlay('edit-overlay');
+  render();
+}
+
+function exportCSV(){
+  if(items.length===0){ alert('No items to export.'); return; }
+  const headers = [
+    'Product ID [Non Editable]','Variant ID [Non Editable]','Product Type [Non Editable]',
+    'Product Page','Product URL','Title','Description','SKU','GTIN','MPN',
+    'Option Name 1','Option Value 1','Option Name 2','Option Value 2',
+    'Option Name 3','Option Value 3','Option Name 4','Option Value 4',
+    'Option Name 5','Option Value 5','Option Name 6','Option Value 6',
+    'Price','Sale Price','On Sale','Stock','Categories','Tags',
+    'Weight','Length','Width','Height','Visible','Hosted Image URLs'
+  ];
+  const rows = [];
+  items.forEach(item => {
+    const title = buildFullTitle(item);
+    const slug  = toSlug(item.title+' '+item.code);
+    const page  = CAT_PAGES[item.category]||'';
+    const desc  = buildHtmlDescription(item);
+    if(item.single){
+      rows.push(['','','PHYSICAL',page,slug,title,desc,item.code,'','','','','','','','','','','','','','',item.priceRestored.toFixed(2),'0.00','No','1','',item.code,'0.0','0.0','0.0','0.0','No','']);
+    } else {
+      rows.push(['','','PHYSICAL',page,slug,title,desc,item.code,'','','Finish','Current condition','','','','','','','','','','',item.priceCurrent.toFixed(2),'0.00','No','1','',item.code,'0.0','0.0','0.0','0.0','No','']);
+      rows.push(['','','','','','','',item.code+'-W','','','Finish','Restored and waxed','','','','','','','','','','',item.priceRestored.toFixed(2),'0.00','No','1','','','0.0','0.0','0.0','0.0','','']);
+    }
+  });
+  const csv = [headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download = 'pinefinders_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+render();
+</script>
+</body>
+</html>
