@@ -16,15 +16,10 @@ module.exports = async (req, res) => {
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
   const mimeType = imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
 
-  // Temporary debug — lists available models
-  const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-  const listData = await listRes.json();
-  const allModels = (listData.models||[]).map(m=>m.name);
-  return res.json({ error: 'DEBUG — available models: ' + allModels.join(', ') });
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/nano-banana-pro-preview:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
