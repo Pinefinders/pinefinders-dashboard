@@ -126,6 +126,19 @@ textarea#transcript-input::placeholder { color: #bba08a; }
 .pt-toggle-btn.active { background: #3d2b1f; color: white; border-color: #3d2b1f; }
 .pt-divider { border: none; border-top: 1px solid #f0e8e0; margin: 2px 0; }
 
+.pt-room-section {
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0e8e0;
+}
+.pt-room-prompt {
+  width: 100%; padding: 9px 11px; border: 1px solid #d4b89a; border-radius: 7px;
+  font-size: 13px; font-family: inherit; color: #2c1810; resize: vertical;
+  outline: none; line-height: 1.5; margin-top: 6px; height: 72px;
+}
+.pt-room-prompt:focus { border-color: #8a5d3b; box-shadow: 0 0 0 2px rgba(138,93,59,0.12); }
+.pt-room-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.pt-room-result { margin-top: 14px; }
+.pt-room-result img { width: 100%; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.12); display: block; margin-bottom: 8px; }
+
 .pt-spinner {
   display: inline-block; width: 13px; height: 13px;
   border: 2px solid rgba(255,255,255,0.4); border-top-color: white;
@@ -251,14 +264,14 @@ textarea#transcript-input::placeholder { color: #bba08a; }
 
   <!-- Photo Tool Panel -->
   <div class="panel">
-    <div class="panel-header" id="photo-header" onclick="togglePanel('photo')">
+    <div class="panel-header open" id="photo-header" onclick="togglePanel('photo')">
       <div>
         <h2>📷 Photo Tool</h2>
         <p>Upload a photo, remove the background, save — then do the next one</p>
       </div>
-      <span class="arrow" id="photo-arrow">▼</span>
+      <span class="arrow open" id="photo-arrow">▼</span>
     </div>
-    <div class="panel-body" id="photo-body">
+    <div class="panel-body open" id="photo-body">
 
       <!-- Upload area (shown when no photo loaded) -->
       <div class="pt-upload-area" id="pt-upload-area" onclick="document.getElementById('pt-file-input').click()">
@@ -269,7 +282,8 @@ textarea#transcript-input::placeholder { color: #bba08a; }
       </div>
 
       <!-- Workspace (shown when photo loaded) -->
-      <div class="pt-workspace" id="pt-workspace" style="display:none">
+      <div id="pt-workspace-wrap" style="display:none">
+      <div class="pt-workspace" id="pt-workspace">
         <div class="pt-img-wrap">
           <img id="pt-img" src="" alt="Product photo">
           <button class="pt-change-btn" onclick="document.getElementById('pt-file-input').click()">↑ Change photo</button>
@@ -292,6 +306,22 @@ textarea#transcript-input::placeholder { color: #bba08a; }
           <button class="pt-btn danger" onclick="ptClear()">✕ Clear — next photo</button>
         </div>
       </div>
+
+      <!-- Room Generation Section -->
+      <div class="pt-room-section">
+        <div class="pt-controls-title">Place in a Room Setting</div>
+        <textarea class="pt-room-prompt" id="pt-room-prompt">Create an image of this exact piece of furniture in an appropriate room of an old English country cottage.</textarea>
+        <div class="pt-room-btns">
+          <button class="pt-btn primary" id="pt-room-btn" onclick="ptGenerateRoom()" style="flex:1">🏠 Place in Room</button>
+          <button class="pt-btn" id="pt-regen-btn" onclick="ptGenerateRoom()" style="display:none; flex:1">↻ Try Again</button>
+        </div>
+        <div class="pt-room-result" id="pt-room-result" style="display:none">
+          <img id="pt-room-img" src="" alt="Room setting">
+          <button class="pt-btn success" onclick="ptDownloadRoom()">⬇ Save Room Image</button>
+        </div>
+      </div>
+
+      </div><!-- end pt-workspace-wrap -->
 
     </div>
   </div>
@@ -344,7 +374,9 @@ const pt = {
   current: null,    // current displayed/downloadable image
   bgMode: 'blur',
   processing: false,
-  filename: 'photo'
+  filename: 'photo',
+  roomImage: null,       // generated room image
+  roomProcessing: false
 };
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -447,8 +479,8 @@ function ptLoadPhoto(input){
 
 function ptUpdateUI(){
   const hasPhoto = !!pt.original;
-  document.getElementById('pt-upload-area').style.display = hasPhoto ? 'none' : 'block';
-  document.getElementById('pt-workspace').style.display   = hasPhoto ? 'flex' : 'none';
+  document.getElementById('pt-upload-area').style.display    = hasPhoto ? 'none' : 'block';
+  document.getElementById('pt-workspace-wrap').style.display = hasPhoto ? 'block' : 'none';
   if(hasPhoto){
     document.getElementById('pt-img').src = pt.current || pt.original;
     document.getElementById('pt-toggle-row').style.display = pt.cutout ? 'block' : 'none';
@@ -463,14 +495,61 @@ function ptUpdateUI(){
         ? '<span class="pt-spinner"></span> Removing background…'
         : '✂ Remove Background';
     }
+    // Room section
+    const roomBtn    = document.getElementById('pt-room-btn');
+    const regenBtn   = document.getElementById('pt-regen-btn');
+    const roomResult = document.getElementById('pt-room-result');
+    const roomImg    = document.getElementById('pt-room-img');
+    if(roomBtn){
+      roomBtn.disabled = pt.roomProcessing;
+      roomBtn.innerHTML = pt.roomProcessing
+        ? '<span class="pt-spinner"></span> Generating room…'
+        : '🏠 Place in Room';
+    }
+    if(regenBtn)   regenBtn.style.display   = (pt.roomImage && !pt.roomProcessing) ? 'flex' : 'none';
+    if(roomResult) roomResult.style.display = pt.roomImage ? 'block' : 'none';
+    if(roomImg && pt.roomImage) roomImg.src = pt.roomImage;
   }
 }
 
 function ptClear(){
   pt.original = null; pt.cutout = null; pt.current = null;
   pt.bgMode = 'blur'; pt.processing = false; pt.filename = 'photo';
+  pt.roomImage = null; pt.roomProcessing = false;
   document.getElementById('pt-file-input').value = '';
   ptUpdateUI();
+}
+
+async function ptGenerateRoom(){
+  if(!pt.original || pt.roomProcessing) return;
+  const prompt = document.getElementById('pt-room-prompt').value.trim();
+  if(!prompt){ alert('Please enter a prompt first.'); return; }
+  pt.roomProcessing = true;
+  ptUpdateUI();
+  try {
+    const compressed = await compressImage(pt.original, 1500, 0.88);
+    const res = await fetch('/api/gemini-room', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: compressed, prompt })
+    });
+    const data = await res.json();
+    if(!res.ok || data.error) throw new Error(data.error || 'Failed to generate room image.');
+    pt.roomImage = data.imageBase64;
+  } catch(err){
+    alert('Room generation failed: ' + err.message);
+  } finally {
+    pt.roomProcessing = false;
+    ptUpdateUI();
+  }
+}
+
+function ptDownloadRoom(){
+  if(!pt.roomImage) return;
+  const a = document.createElement('a');
+  a.href = pt.roomImage;
+  a.download = (pt.filename || 'photo') + '-room.png';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 function ptDownload(){
