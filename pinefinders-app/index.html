@@ -138,6 +138,13 @@ textarea#transcript-input::placeholder { color: #bba08a; }
   border: 2px solid rgba(255,255,255,0.4); border-top-color: white;
   border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px;
 }
+.bg-toggle { display: flex; gap: 5px; padding: 7px 8px 0; }
+.bg-toggle-btn {
+  flex: 1; padding: 5px 4px; border-radius: 5px; font-size: 11px; font-weight: 600;
+  cursor: pointer; border: 1px solid #d4b89a; background: white;
+  color: #7a5c44; font-family: inherit; text-align: center;
+}
+.bg-toggle-btn.active { background: #3d2b1f; color: white; border-color: #3d2b1f; }
 
 .card-body { padding: 11px 13px 13px; }
 .flag { background: #fff8e1; border: 1px solid #ffc107; border-radius: 4px; padding: 5px 9px; font-size: 11px; margin-bottom: 9px; color: #7a5500; }
@@ -432,6 +439,12 @@ function render(){
       + ph
       + '<input type="file" id="fi'+item.id+'" accept="image/*" style="display:none" onchange="loadPhoto('+item.id+',this)">'
       + '</div>'
+      + (item.photoCutout
+          ? '<div class="bg-toggle">'
+            + '<button class="bg-toggle-btn'+(item.bgMode==='blur'?' active':'')+'" onclick="switchBgMode('+item.id+',\'blur\')">🌫 Blurred</button>'
+            + '<button class="bg-toggle-btn'+(item.bgMode==='white'?' active':'')+'" onclick="switchBgMode('+item.id+',\'white\')">⬜ White</button>'
+            + '</div>'
+          : '')
       + '<div class="card-body">'
       + (item.flag ? '<div class="flag">'+esc(item.flag)+'</div>' : '')
       + '<div class="card-top"><div><div class="card-title">'+esc(item.title)+'</div><div class="card-code">'+esc(item.code)+'</div></div><div class="badge">'+esc(item.category)+'</div></div>'
@@ -482,6 +495,47 @@ function compressImage(dataUrl, maxPx, quality){
   });
 }
 
+function compositeImage(item, mode){
+  return new Promise(resolve => {
+    const cutout = new Image();
+    cutout.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = cutout.width; canvas.height = cutout.height;
+      const ctx = canvas.getContext('2d');
+      if(mode === 'blur' && item.photoOriginal){
+        const orig = new Image();
+        orig.onload = () => {
+          // Draw blurred original as background
+          const scale = Math.max(canvas.width / orig.width, canvas.height / orig.height);
+          const sw = orig.width * scale, sh = orig.height * scale;
+          const sx = (canvas.width - sw) / 2, sy = (canvas.height - sh) / 2;
+          ctx.filter = 'blur(18px)';
+          ctx.drawImage(orig, sx, sy, sw, sh);
+          ctx.filter = 'none';
+          // Draw sharp cutout on top
+          ctx.drawImage(cutout, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg', 0.92));
+        };
+        orig.src = item.photoOriginal;
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(cutout, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      }
+    };
+    cutout.src = item.photoCutout;
+  });
+}
+
+async function switchBgMode(id, mode){
+  const item = items.find(i=>i.id===id);
+  if(!item || !item.photoCutout) return;
+  item.bgMode = mode;
+  item.photo = await compositeImage(item, mode);
+  render();
+}
+
 function downloadPhoto(id){
   const item = items.find(i=>i.id===id);
   if(!item || !item.photo) return;
@@ -496,6 +550,7 @@ async function removeBg(id){
   const item = items.find(i=>i.id===id);
   if(!item || !item.photo) return;
 
+  item.photoOriginal = item.photo; // save original for blur compositing
   removingBgIds.add(id);
   render();
 
@@ -512,7 +567,9 @@ async function removeBg(id){
     const data = await res.json();
     if(!res.ok || data.error) throw new Error(data.error || 'Failed to remove background.');
 
-    item.photo = data.imageBase64;
+    item.photoCutout = data.imageBase64;
+    item.bgMode = 'blur'; // default to blurred background
+    item.photo = await compositeImage(item, 'blur');
   } catch(err){
     alert('Background removal failed: ' + err.message);
   } finally {
