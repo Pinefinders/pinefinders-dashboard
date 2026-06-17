@@ -2,56 +2,43 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { imageBase64, prompt } = req.body || {};
-  if (!imageBase64 || !prompt) return res.status(400).json({ error: 'Image and prompt are required.' });
+  const { imageBase64 } = req.body || {};
+  if (!imageBase64) return res.status(400).json({ error: 'No image provided.' });
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.REMOVE_BG_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Gemini API key not configured. Please set GEMINI_API_KEY in your Vercel environment variables.' });
+    return res.status(500).json({ error: 'Remove.bg API key not configured. Please set REMOVE_BG_API_KEY in your Vercel environment variables.' });
   }
 
+  // Strip the data URI prefix if present
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-  const mimeType = imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inline_data: { mime_type: mimeType, data: base64Data } }
-            ]
-          }],
-          generationConfig: {
-            responseModalities: ['IMAGE', 'TEXT']
-          }
-        })
-      }
-    );
+    const form = new globalThis.FormData();
+    form.append('image_file_b64', base64Data);
+    form.append('size', 'auto');
+    form.append('format', 'png');
+    // No bg_color — returns transparent PNG; compositing is handled client-side
 
-    const data = await response.json();
+    const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+      method: 'POST',
+      headers: { 'X-Api-Key': apiKey },
+      body: form
+    });
 
     if (!response.ok) {
-      return res.status(500).json({ error: data.error?.message || 'Gemini API error.' });
+      const errText = await response.text();
+      return res.status(500).json({ error: 'Remove.bg error: ' + errText.slice(0, 200) });
     }
 
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find(p => p.inline_data?.mime_type?.startsWith('image/'));
+    const arrayBuffer = await response.arrayBuffer();
+    const resultBase64 = 'data:image/png;base64,' + Buffer.from(arrayBuffer).toString('base64');
 
-    if (!imagePart) {
-      return res.status(500).json({ error: 'Gemini did not return an image. Try rephrasing the prompt.' });
-    }
-
-    return res.json({
-      imageBase64: `data:${imagePart.inline_data.mime_type};base64,${imagePart.inline_data.data}`
-    });
+    return res.json({ imageBase64: resultBase64 });
 
   } catch (err) {
     return res.status(500).json({ error: err.message });
