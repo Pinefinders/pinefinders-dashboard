@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/nano-banana-pro-preview:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,7 +47,9 @@ module.exports = async (req, res) => {
     const imagePart = parts.find(p => p.inline_data?.mime_type?.startsWith('image/'));
 
     if (!imagePart) {
-      return res.status(500).json({ error: 'Gemini did not return an image. Try rephrasing the prompt.' });
+      const textPart = parts.find(p => p.text);
+      const debug = 'Parts: ' + JSON.stringify(parts.map(p => Object.keys(p))) + (textPart ? ' | Text: ' + textPart.text.slice(0,200) : '');
+      return res.status(500).json({ error: 'No image returned. DEBUG: ' + debug });
     }
 
     return res.json({
