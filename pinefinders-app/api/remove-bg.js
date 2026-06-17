@@ -9,9 +9,9 @@ module.exports = async (req, res) => {
   const { imageBase64 } = req.body || {};
   if (!imageBase64) return res.status(400).json({ error: 'No image provided.' });
 
-  const apiKey = process.env.REMOVEBG_API_KEY;
+  const apiKey = process.env.REMOVE_BG_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Remove.bg API key not configured. Please set REMOVEBG_API_KEY in your Vercel environment variables.' });
+    return res.status(500).json({ error: 'Remove.bg API key not configured. Please set REMOVE_BG_API_KEY in your Vercel environment variables.' });
   }
 
   // Strip the data URI prefix if present
