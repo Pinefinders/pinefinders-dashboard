@@ -509,7 +509,7 @@ function compositeImage(item, mode){
           const scale = Math.max(canvas.width / orig.width, canvas.height / orig.height);
           const sw = orig.width * scale, sh = orig.height * scale;
           const sx = (canvas.width - sw) / 2, sy = (canvas.height - sh) / 2;
-          ctx.filter = 'blur(3px)';
+          ctx.filter = 'blur(1px)';
           ctx.drawImage(orig, sx, sy, sw, sh);
           ctx.filter = 'none';
           // Draw sharp cutout on top
