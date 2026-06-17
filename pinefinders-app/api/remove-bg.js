@@ -18,13 +18,11 @@ module.exports = async (req, res) => {
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
   try {
-    const FormData = (await import('node:stream')).PassThrough; // trigger ESM check
-    // Use built-in fetch + FormData (available in Node 18+)
     const form = new globalThis.FormData();
     form.append('image_file_b64', base64Data);
     form.append('size', 'auto');
     form.append('format', 'png');
-    form.append('bg_color', 'ffffff'); // white background
+    // No bg_color — returns transparent PNG; compositing is handled client-side
 
     const response = await fetch('https://api.remove.bg/v1.0/removebg', {
       method: 'POST',
