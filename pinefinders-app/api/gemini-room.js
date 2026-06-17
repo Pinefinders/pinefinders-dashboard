@@ -5,7 +5,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { imageBase64, prompt } = req.body || {};
+  const { imageBase64, backdropBase64, prompt } = req.body || {};
   if (!imageBase64 || !prompt) return res.status(400).json({ error: 'Image and prompt are required.' });
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -16,6 +16,17 @@ module.exports = async (req, res) => {
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
   const mimeType = imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
 
+  // Build parts: prompt text + furniture image + optional showroom backdrop
+  const parts = [
+    { text: prompt },
+    { inline_data: { mime_type: mimeType, data: base64Data } }
+  ];
+
+  if (backdropBase64) {
+    const backdropData = backdropBase64.replace(/^data:image\/\w+;base64,/, '');
+    const backdropMime = backdropBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+    parts.push({ inline_data: { mime_type: backdropMime, data: backdropData } });
+  }
 
   try {
     const response = await fetch(
@@ -24,12 +35,7 @@ module.exports = async (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inline_data: { mime_type: mimeType, data: base64Data } }
-            ]
-          }],
+          contents: [{ parts }],
           generationConfig: {
             responseModalities: ['IMAGE', 'TEXT']
           }
