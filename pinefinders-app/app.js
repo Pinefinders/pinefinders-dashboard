@@ -114,20 +114,19 @@ function showError(msg){
 
 // ── Photo Tool ────────────────────────────────────────────────
 function ptLoadPhoto(input){
-  console.log('[PT] ptLoadPhoto called', input);
   const files = input.files || input;
   const file = files[0];
-  console.log('[PT] file:', file ? file.name : 'NONE');
   if(!file) return;
   pt.filename = file.name.replace(/\.[^.]+$/, '') || 'photo';
-  if(pt.original && pt.original.startsWith('blob:')) URL.revokeObjectURL(pt.original);
-  pt.original = URL.createObjectURL(file);
-  pt.cutout = null;
-  pt.current = pt.original;
-  pt.bgMode = 'blur';
-  console.log('[PT] blob URL:', pt.original, '— calling ptUpdateUI');
-  ptUpdateUI();
-  console.log('[PT] ptUpdateUI done');
+  const r = new FileReader();
+  r.onload = e => {
+    pt.original = e.target.result;
+    pt.cutout = null;
+    pt.current = pt.original;
+    pt.bgMode = 'blur';
+    ptUpdateUI();
+  };
+  r.readAsDataURL(file);
 }
 
 function ptUpdateUI(){
@@ -166,7 +165,6 @@ function ptUpdateUI(){
 }
 
 function ptClear(){
-  if(pt.original && pt.original.startsWith('blob:')) URL.revokeObjectURL(pt.original);
   pt.original = null; pt.cutout = null; pt.current = null;
   pt.bgMode = 'blur'; pt.processing = false; pt.filename = 'photo';
   pt.roomImage = null; pt.roomProcessing = false;
