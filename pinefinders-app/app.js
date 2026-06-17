@@ -122,13 +122,19 @@ function ptLoadPhoto(input){
   const file = files[0];
   if(!file) return;
   pt.filename = file.name.replace(/\.[^.]+$/, '') || 'photo';
+  pt.cutout = null;
+  pt.bgMode = 'blur';
+  // Show immediately with blob URL — synchronous, no callbacks
+  if(pt.original && pt.original.startsWith('blob:')) URL.revokeObjectURL(pt.original);
+  pt.original = URL.createObjectURL(file);
+  pt.current  = pt.original;
+  ptUpdateUI();
+  // Convert to data URL in background so canvas/API calls work
   const r = new FileReader();
   r.onload = e => {
+    URL.revokeObjectURL(pt.original);
     pt.original = e.target.result;
-    pt.cutout = null;
-    pt.current = pt.original;
-    pt.bgMode = 'blur';
-    ptUpdateUI();
+    if(!pt.cutout) pt.current = pt.original;
   };
   r.readAsDataURL(file);
 }
@@ -175,6 +181,7 @@ function ptUpdateUI(){
 }
 
 function ptClear(){
+  if(pt.original && pt.original.startsWith('blob:')) URL.revokeObjectURL(pt.original);
   pt.original = null; pt.cutout = null; pt.current = null;
   pt.bgMode = 'blur'; pt.processing = false; pt.filename = 'photo';
   pt.roomImage = null; pt.roomProcessing = false;
@@ -450,6 +457,12 @@ render();
 
 // ── Photo Tool event wiring ───────────────────────────────────
 (function(){
+  // File inputs — addEventListener as backup to inline onchange
+  const fi = document.getElementById('pt-file-input');
+  const fic = document.getElementById('pt-file-input-change');
+  if(fi)  fi.addEventListener('change',  function(){ ptLoadPhoto(this); });
+  if(fic) fic.addEventListener('change', function(){ ptLoadPhoto(this); });
+
   // Backdrop (showroom background) upload
   const backdropInput = document.getElementById('pt-backdrop-input');
   if(backdropInput){
