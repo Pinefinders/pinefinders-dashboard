@@ -304,7 +304,12 @@ textarea#transcript-input::placeholder { color: #bba08a; }
             <div class="pt-toggle">
               <button class="pt-toggle-btn active" id="pt-blur-btn" onclick="ptSwitchBg('blur')">🌫 Blurred</button>
               <button class="pt-toggle-btn" id="pt-white-btn" onclick="ptSwitchBg('white')">⬜ White</button>
+              <button class="pt-toggle-btn" id="pt-showroom-btn" onclick="ptSwitchBg('showroom')">📸 Showroom</button>
             </div>
+            <div id="pt-backdrop-hint" style="display:none;font-size:11px;color:#9e7a5e;margin-top:6px">
+              Backdrop: <span id="pt-backdrop-name" style="color:#3d2b1f;font-weight:600"></span> — <a href="#" onclick="document.getElementById('pt-backdrop-input').click();return false;" style="color:#8a5d3b">change</a>
+            </div>
+            <input type="file" id="pt-backdrop-input" accept="image/*" style="display:none">
           </div>
 
           <hr class="pt-divider">
@@ -381,8 +386,3 @@ The furniture is the hero of the image. The final result should look like a genu
 </div>
 
 <!-- Preview Overlay -->
-<div id="preview-overlay" class="overlay" style="display:none" onclick="overlayClick(event,'preview-overlay')">
-  <div class="preview-modal" id="preview-modal"></div>
-</div>
-
-<script src="app.js"></script>
