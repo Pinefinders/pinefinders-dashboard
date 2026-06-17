@@ -44,16 +44,15 @@ module.exports = async (req, res) => {
     }
 
     const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find(p => p.inline_data?.mime_type?.startsWith('image/'));
+    const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/') || p.inline_data?.mime_type?.startsWith('image/'));
 
     if (!imagePart) {
-      const textPart = parts.find(p => p.text);
-      const debug = 'Parts: ' + JSON.stringify(parts.map(p => Object.keys(p))) + (textPart ? ' | Text: ' + textPart.text.slice(0,200) : '');
-      return res.status(500).json({ error: 'No image returned. DEBUG: ' + debug });
+      return res.status(500).json({ error: 'Gemini did not return an image. Try rephrasing the prompt.' });
     }
 
+    const imgData = imagePart.inlineData || imagePart.inline_data;
     return res.json({
-      imageBase64: `data:${imagePart.inline_data.mime_type};base64,${imagePart.inline_data.data}`
+      imageBase64: `data:${imgData.mimeType || imgData.mime_type};base64,${imgData.data}`
     });
 
   } catch (err) {
