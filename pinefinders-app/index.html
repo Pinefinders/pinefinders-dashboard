@@ -275,7 +275,7 @@ textarea#transcript-input::placeholder { color: #bba08a; }
 
       <!-- Upload area (shown when no photo loaded) -->
       <label class="pt-upload-area" id="pt-upload-area" for="pt-file-input" style="display:block;cursor:pointer">
-        <input type="file" id="pt-file-input" accept="image/*" style="display:none" onchange="ptLoadPhoto(this)">
+        <input type="file" id="pt-file-input" accept="image/*" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" onchange="ptLoadPhoto(this)">
         <div class="pt-upload-icon">📷</div>
         <div class="pt-upload-label">Click to upload a photo</div>
         <div class="pt-upload-sub">JPEG or PNG — any phone photo works fine</div>
@@ -287,7 +287,7 @@ textarea#transcript-input::placeholder { color: #bba08a; }
         <div class="pt-img-wrap">
           <img id="pt-img" src="" alt="Product photo">
           <label class="pt-change-btn" for="pt-file-input-change" style="cursor:pointer">↑ Change photo</label>
-          <input type="file" id="pt-file-input-change" accept="image/*" style="display:none" onchange="ptLoadPhoto(this)">
+          <input type="file" id="pt-file-input-change" accept="image/*" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" onchange="ptLoadPhoto(this)">
         </div>
         <div class="pt-controls">
           <div class="pt-controls-title">Background</div>
