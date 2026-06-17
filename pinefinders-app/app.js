@@ -17,6 +17,10 @@ let items = [];
 let nextId = 0;
 let editId = null;
 
+// Showroom backdrop — persists across photo sessions
+let backdrop = null;
+let backdropName = '';
+
 // Photo tool state
 const pt = {
   original: null,   // original uploaded image data URL
@@ -136,10 +140,16 @@ function ptUpdateUI(){
   if(hasPhoto){
     document.getElementById('pt-img').src = pt.current || pt.original;
     document.getElementById('pt-toggle-row').style.display = pt.cutout ? 'block' : 'none';
-    const blurBtn  = document.getElementById('pt-blur-btn');
-    const whiteBtn = document.getElementById('pt-white-btn');
-    if(blurBtn)  blurBtn.classList.toggle('active',  pt.bgMode === 'blur');
-    if(whiteBtn) whiteBtn.classList.toggle('active', pt.bgMode === 'white');
+    const blurBtn     = document.getElementById('pt-blur-btn');
+    const whiteBtn    = document.getElementById('pt-white-btn');
+    const showroomBtn = document.getElementById('pt-showroom-btn');
+    if(blurBtn)     blurBtn.classList.toggle('active',     pt.bgMode === 'blur');
+    if(whiteBtn)    whiteBtn.classList.toggle('active',    pt.bgMode === 'white');
+    if(showroomBtn) showroomBtn.classList.toggle('active', pt.bgMode === 'showroom');
+    const backdropHint = document.getElementById('pt-backdrop-hint');
+    const backdropNameEl = document.getElementById('pt-backdrop-name');
+    if(backdropHint){ backdropHint.style.display = backdrop ? 'block' : 'none'; }
+    if(backdropNameEl && backdropName) backdropNameEl.textContent = backdropName;
     const removeBtn = document.getElementById('pt-removebg-btn');
     if(removeBtn){
       removeBtn.disabled = pt.processing;
@@ -239,26 +249,26 @@ function compressImage(dataUrl, maxPx, quality){
   });
 }
 
-function compositeImage(cutoutSrc, originalSrc, mode){
+function compositeImage(cutoutSrc, backgroundSrc, mode){
   return new Promise(resolve => {
     const cutout = new Image();
     cutout.onload = () => {
       const canvas = document.createElement('canvas');
       canvas.width = cutout.width; canvas.height = cutout.height;
       const ctx = canvas.getContext('2d');
-      if(mode === 'blur' && originalSrc){
-        const orig = new Image();
-        orig.onload = () => {
-          const scale = Math.max(canvas.width / orig.width, canvas.height / orig.height);
-          const sw = orig.width * scale, sh = orig.height * scale;
+      if((mode === 'blur' || mode === 'showroom') && backgroundSrc){
+        const bg = new Image();
+        bg.onload = () => {
+          const scale = Math.max(canvas.width / bg.width, canvas.height / bg.height);
+          const sw = bg.width * scale, sh = bg.height * scale;
           const sx = (canvas.width - sw) / 2, sy = (canvas.height - sh) / 2;
-          ctx.filter = 'blur(9px)';
-          ctx.drawImage(orig, sx, sy, sw, sh);
+          if(mode === 'blur') ctx.filter = 'blur(9px)';
+          ctx.drawImage(bg, sx, sy, sw, sh);
           ctx.filter = 'none';
           ctx.drawImage(cutout, 0, 0);
           resolve(canvas.toDataURL('image/png'));
         };
-        orig.src = originalSrc;
+        bg.src = backgroundSrc;
       } else {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -297,8 +307,13 @@ async function ptRemoveBg(){
 
 async function ptSwitchBg(mode){
   if(!pt.cutout) return;
+  if(mode === 'showroom' && !backdrop){
+    document.getElementById('pt-backdrop-input').click();
+    return;
+  }
   pt.bgMode = mode;
-  pt.current = await compositeImage(pt.cutout, pt.original, mode);
+  const bgSrc = mode === 'showroom' ? backdrop : pt.original;
+  pt.current = await compositeImage(pt.cutout, bgSrc, mode);
   ptUpdateUI();
 }
 
@@ -433,8 +448,28 @@ function exportCSV(){
 
 render();
 
-// ── Photo Tool drag-and-drop ──────────────────────────────────
+// ── Photo Tool event wiring ───────────────────────────────────
 (function(){
+  // Backdrop (showroom background) upload
+  const backdropInput = document.getElementById('pt-backdrop-input');
+  if(backdropInput){
+    backdropInput.addEventListener('change', function(){
+      const file = this.files[0]; if(!file) return;
+      backdropName = file.name.replace(/\.[^.]+$/, '') || 'backdrop';
+      const r = new FileReader();
+      r.onload = async e => {
+        backdrop = e.target.result;
+        if(pt.cutout){
+          pt.bgMode = 'showroom';
+          pt.current = await compositeImage(pt.cutout, backdrop, 'showroom');
+          ptUpdateUI();
+        }
+      };
+      r.readAsDataURL(file);
+    });
+  }
+
+  // Drag-and-drop on upload area
   const uploadArea = document.getElementById('pt-upload-area');
   if(!uploadArea) return;
   uploadArea.addEventListener('dragover', function(e){
