@@ -274,13 +274,11 @@ textarea#transcript-input::placeholder { color: #bba08a; }
     <div class="panel-body open" id="photo-body">
 
       <!-- Upload area (shown when no photo loaded) -->
-      <div class="pt-upload-area" id="pt-upload-area" style="display:block;position:relative;overflow:hidden">
-        <input type="file" id="pt-file-input" accept="image/*"
-          style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2"
-          onchange="ptLoadPhoto(this)">
+      <div class="pt-upload-area" id="pt-upload-area" style="display:block">
         <div class="pt-upload-icon">📷</div>
-        <div class="pt-upload-label">Click or drag a photo here</div>
-        <div class="pt-upload-sub">JPEG or PNG — any phone photo works fine</div>
+        <div class="pt-upload-label">Choose a photo to get started</div>
+        <div class="pt-upload-sub" style="margin-bottom:14px">JPEG or PNG — any phone photo works fine</div>
+        <input type="file" id="pt-file-input" accept="image/*" onchange="ptLoadPhoto(this)">
       </div>
 
       <!-- Workspace (shown when photo loaded) -->
@@ -386,3 +384,10 @@ The furniture is the hero of the image. The final result should look like a genu
 </div>
 
 <!-- Preview Overlay -->
+<div id="preview-overlay" class="overlay" style="display:none" onclick="overlayClick(event,'preview-overlay')">
+  <div class="preview-modal" id="preview-modal"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
