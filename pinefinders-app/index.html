@@ -310,7 +310,39 @@ textarea#transcript-input::placeholder { color: #bba08a; }
       <!-- Room Generation Section -->
       <div class="pt-room-section">
         <div class="pt-controls-title">Place in a Room Setting</div>
-        <textarea class="pt-room-prompt" id="pt-room-prompt">Create an image of this exact piece of furniture in an appropriate room of an old English country cottage.</textarea>
+        <div style="margin-bottom:6px">
+          <label style="font-size:11px;color:#9e7a5e;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:3px">Furniture Type</label>
+          <input id="pt-room-type" placeholder="e.g. Chest of drawers, Wardrobe, Dresser…" style="width:100%;padding:7px 9px;border:1px solid #d4b89a;border-radius:6px;font-size:13px;font-family:inherit;color:#2c1810;outline:none">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <div style="flex:1">
+            <label style="font-size:11px;color:#9e7a5e;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:3px">Height</label>
+            <input id="pt-room-height" placeholder='e.g. 48"' style="width:100%;padding:7px 9px;border:1px solid #d4b89a;border-radius:6px;font-size:13px;font-family:inherit;color:#2c1810;outline:none">
+          </div>
+          <div style="flex:1">
+            <label style="font-size:11px;color:#9e7a5e;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:3px">Width</label>
+            <input id="pt-room-width" placeholder='e.g. 36"' style="width:100%;padding:7px 9px;border:1px solid #d4b89a;border-radius:6px;font-size:13px;font-family:inherit;color:#2c1810;outline:none">
+          </div>
+          <div style="flex:1">
+            <label style="font-size:11px;color:#9e7a5e;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:3px">Depth</label>
+            <input id="pt-room-depth" placeholder='e.g. 20"' style="width:100%;padding:7px 9px;border:1px solid #d4b89a;border-radius:6px;font-size:13px;font-family:inherit;color:#2c1810;outline:none">
+          </div>
+        </div>
+        <textarea class="pt-room-prompt" id="pt-room-prompt" style="height:120px">Create a photorealistic interior scene featuring the exact piece of furniture shown in the reference image.
+Furniture type: [FURNITURE TYPE]
+Dimensions: Height [HEIGHT], Width [WIDTH], Depth [DEPTH]
+
+IMPORTANT – PRESERVE THE FURNITURE EXACTLY. The furniture in the reference image must remain unchanged. Do not alter the overall design, proportions, construction details, colour or finish, handles or hardware, doors or drawers, mouldings or cornices, surface character, patina or signs of age. Do not add or remove any features.
+
+SCALE: Use the supplied dimensions to maintain accurate real-world scale relative to the room, doorways, windows, ceilings and other objects.
+
+ROOM: Place the furniture in a traditional English country cottage interior appropriate for the furniture type. Wardrobes in bedrooms, chests of drawers in bedrooms or dressing areas, cupboards in kitchens or dining rooms, bookcases in studies or living rooms, tables in dining rooms or kitchens.
+
+INTERIOR STYLE: Natural daylight, timber or flagstone floors, lime-plastered or painted walls, traditional skirting boards, aged natural materials, muted neutral colours, traditional textiles. No modern furniture, televisions, computers, contemporary artwork or minimalist styling. The room should feel lived-in, tasteful and authentic.
+
+PHOTOGRAPHY: Eye-level camera, 35mm equivalent, soft natural daylight, realistic shadows and reflections, high-resolution photorealistic quality. The entire piece of furniture must be visible.
+
+The furniture is the hero of the image. The final result should look like a genuine professional photograph of this exact piece of antique pine furniture placed naturally in a beautiful traditional English country cottage.</textarea>
         <div class="pt-room-btns">
           <button class="pt-btn primary" id="pt-room-btn" onclick="ptGenerateRoom()" style="flex:1">🏠 Place in Room</button>
           <button class="pt-btn" id="pt-regen-btn" onclick="ptGenerateRoom()" style="display:none; flex:1">↻ Try Again</button>
@@ -522,8 +554,17 @@ function ptClear(){
 
 async function ptGenerateRoom(){
   if(!pt.original || pt.roomProcessing) return;
-  const prompt = document.getElementById('pt-room-prompt').value.trim();
+  let prompt = document.getElementById('pt-room-prompt').value.trim();
   if(!prompt){ alert('Please enter a prompt first.'); return; }
+  const furnitureType = document.getElementById('pt-room-type').value.trim()   || 'antique pine furniture';
+  const height        = document.getElementById('pt-room-height').value.trim() || 'not specified';
+  const width         = document.getElementById('pt-room-width').value.trim()  || 'not specified';
+  const depth         = document.getElementById('pt-room-depth').value.trim()  || 'not specified';
+  const fullPrompt = prompt
+    .replace('[FURNITURE TYPE]', furnitureType)
+    .replace('[HEIGHT]', height)
+    .replace('[WIDTH]', width)
+    .replace('[DEPTH]', depth);
   pt.roomProcessing = true;
   ptUpdateUI();
   try {
@@ -531,7 +572,7 @@ async function ptGenerateRoom(){
     const res = await fetch('/api/gemini-room', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: compressed, prompt })
+      body: JSON.stringify({ imageBase64: compressed, prompt: fullPrompt })
     });
     const data = await res.json();
     if(!res.ok || data.error) throw new Error(data.error || 'Failed to generate room image.');
@@ -733,44 +774,3 @@ function saveEdit(){
   const item = items.find(i=>i.id===editId); if(!item) return;
   item.title       = document.getElementById('e-title').value;
   item.code        = document.getElementById('e-code').value;
-  item.category    = document.getElementById('e-cat').value;
-  item.description = document.getElementById('e-desc').value;
-  item.priceCurrent  = parseFloat(document.getElementById('e-p1').value)||0;
-  item.priceRestored = parseFloat(document.getElementById('e-p2').value)||0;
-  item.single      = document.getElementById('e-single').checked;
-  item.height      = document.getElementById('e-h').value;
-  item.width       = document.getElementById('e-w').value;
-  item.depth       = document.getElementById('e-d').value;
-  item.extra       = document.getElementById('e-extra').value;
-  item.flag        = null;
-  closeOverlay('edit-overlay');
-  render();
-}
-
-function exportCSV(){
-  if(!items.length){ alert('No items to export.'); return; }
-  const headers = ['Product ID [Non Editable]','Variant ID [Non Editable]','Product Type [Non Editable]','Product Page','Product URL','Title','Description','SKU','GTIN','MPN','Option Name 1','Option Value 1','Option Name 2','Option Value 2','Option Name 3','Option Value 3','Option Name 4','Option Value 4','Option Name 5','Option Value 5','Option Name 6','Option Value 6','Price','Sale Price','On Sale','Stock','Categories','Tags','Weight','Length','Width','Height','Visible','Hosted Image URLs'];
-  const rows = [];
-  items.forEach(item => {
-    const title = buildFullTitle(item);
-    const slug  = toSlug(item.title+' '+item.code);
-    const page  = CAT_PAGES[item.category]||'';
-    const desc  = buildHtmlDescription(item);
-    if(item.single){
-      rows.push(['','','PHYSICAL',page,slug,title,desc,item.code,'','','','','','','','','','','','','','',item.priceRestored.toFixed(2),'0.00','No','1','',item.code,'0.0','0.0','0.0','0.0','No','']);
-    } else {
-      rows.push(['','','PHYSICAL',page,slug,title,desc,item.code,'','','Finish','Current condition','','','','','','','','','','',item.priceCurrent.toFixed(2),'0.00','No','1','',item.code,'0.0','0.0','0.0','0.0','No','']);
-      rows.push(['','','','','','','',item.code+'-W','','','Finish','Restored and waxed','','','','','','','','','','',item.priceRestored.toFixed(2),'0.00','No','1','','','0.0','0.0','0.0','0.0','','']);
-    }
-  });
-  const csv = [headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-  a.download = 'pinefinders_'+new Date().toISOString().slice(0,10)+'.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-}
-
-render();
-</script>
-</body>
-</html>
