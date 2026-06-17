@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
     const FormData = (await import('node:stream')).PassThrough; // trigger ESM check
     // Use built-in fetch + FormData (available in Node 18+)
     const form = new globalThis.FormData();
-    form.append('image_base64', base64Data);
+    form.append('image_file_b64', base64Data);
     form.append('size', 'auto');
     form.append('format', 'png');
     form.append('bg_color', 'ffffff'); // white background
