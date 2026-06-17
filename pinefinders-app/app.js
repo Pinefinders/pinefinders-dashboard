@@ -168,11 +168,19 @@ function ptUpdateUI(){
     const regenBtn   = document.getElementById('pt-regen-btn');
     const roomResult = document.getElementById('pt-room-result');
     const roomImg    = document.getElementById('pt-room-img');
+    const showroomRoomBtn = document.getElementById('pt-showroom-room-btn');
     if(roomBtn){
       roomBtn.disabled = pt.roomProcessing;
       roomBtn.innerHTML = pt.roomProcessing
-        ? '<span class="pt-spinner"></span> Generating room…'
+        ? '<span class="pt-spinner"></span> Generating…'
         : '🏠 Place in Room';
+    }
+    if(showroomRoomBtn){
+      showroomRoomBtn.style.display = backdrop ? 'flex' : 'none';
+      showroomRoomBtn.disabled = pt.roomProcessing;
+      showroomRoomBtn.innerHTML = pt.roomProcessing
+        ? '<span class="pt-spinner"></span> Generating…'
+        : '📸 Place in My Showroom';
     }
     if(regenBtn)   regenBtn.style.display   = (pt.roomImage && !pt.roomProcessing) ? 'flex' : 'none';
     if(roomResult) roomResult.style.display = pt.roomImage ? 'block' : 'none';
@@ -216,6 +224,95 @@ async function ptGenerateRoom(){
     pt.roomImage = data.imageBase64;
   } catch(err){
     alert('Room generation failed: ' + err.message);
+  } finally {
+    pt.roomProcessing = false;
+    ptUpdateUI();
+  }
+}
+
+async function ptGenerateShowroom(){
+  if(!pt.original || !backdrop || pt.roomProcessing) return;
+  const furnitureType = document.getElementById('pt-room-type').value.trim()   || 'antique pine furniture';
+  const height        = document.getElementById('pt-room-height').value.trim() || 'not specified';
+  const width         = document.getElementById('pt-room-width').value.trim()  || 'not specified';
+  const depth         = document.getElementById('pt-room-depth').value.trim()  || 'not specified';
+
+  const showroomPrompt = `You are provided with two reference images:
+
+1. A photograph of a piece of furniture.
+2. A photograph showing the Pinefinders showroom wall and carpet.
+
+Create a photorealistic image of the furniture displayed naturally within the showroom environment.
+
+IMPORTANT
+The showroom image is a reference for the appearance of the environment, not a fixed background.
+Learn and preserve:
+* The wall colour and texture
+* The carpet colour and texture
+* The overall lighting style
+* The character and appearance of the showroom
+
+You may change the camera position, viewing angle, perspective and composition as needed.
+Do not simply paste the furniture onto the supplied wall photograph.
+Instead, recreate the same showroom environment realistically from whatever angle is required to produce the best furniture photograph.
+
+FURNITURE PLACEMENT
+Furniture type: ${furnitureType}
+Dimensions:
+* Height: ${height}
+* Width: ${width}
+* Depth: ${depth}
+
+Use the supplied dimensions to maintain accurate real-world scale.
+Position the furniture naturally and realistically.
+Examples:
+* Wardrobes, cupboards, bookcases and chests of drawers should normally be placed against the wall.
+* Tables, desks and dining tables may be positioned away from the wall where appropriate.
+* Benches, chairs and other freestanding items should be positioned naturally according to their function.
+* The furniture must never appear to float, intersect walls, sink into the carpet or appear incorrectly scaled.
+
+FURNITURE PRESERVATION
+Preserve the furniture exactly as shown in the reference image.
+Do not alter: design, proportions, colour, finish, handles, hardware, doors, drawers, shelves, surface character, wear, marks or patina.
+Do not add or remove features.
+
+PHOTOGRAPHY REQUIREMENTS
+Create the image as though it were photographed professionally for an antique furniture sales listing.
+Use:
+* Natural perspective
+* Realistic room depth
+* Accurate shadows and contact shadows where the furniture meets the carpet
+* Realistic lighting
+* High-resolution photorealistic quality
+
+The furniture must remain the primary subject.
+
+ENVIRONMENT CONSISTENCY
+The resulting image should clearly look as though it was photographed within the same showroom represented by the reference wall and carpet image, even when viewed from a different angle.
+The wall, carpet, colours, textures and overall appearance should remain consistent.
+
+FINAL RESULT
+Produce a realistic showroom photograph that appears to have been taken inside the actual Pinefinders showroom, with the furniture correctly scaled, naturally positioned and professionally photographed.`;
+
+  pt.roomProcessing = true;
+  ptUpdateUI();
+  try {
+    const furnitureCompressed = await compressImage(pt.original, 1500, 0.88);
+    const backdropCompressed  = await compressImage(backdrop,    1500, 0.88);
+    const res = await fetch('/api/gemini-room', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imageBase64: furnitureCompressed,
+        backdropBase64: backdropCompressed,
+        prompt: showroomPrompt
+      })
+    });
+    const data = await res.json();
+    if(!res.ok || data.error) throw new Error(data.error || 'Failed to generate showroom image.');
+    pt.roomImage = data.imageBase64;
+  } catch(err){
+    alert('Showroom generation failed: ' + err.message);
   } finally {
     pt.roomProcessing = false;
     ptUpdateUI();
