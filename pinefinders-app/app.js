@@ -47,7 +47,7 @@ function buildDimLine(item){
   return line;
 }
 function buildFullDescription(item){
-  return item.description + '\n\n' + 'Code: ' + item.code + '\n\n' + buildPriceLine(item) + '\n\n' + buildDimLine(item);
+  return item.description + '\n\n' + 'Code: ' + item.code + '\n\n' + buildPriceLine(item) + '\n\n' + buildDimLine(item) + '\n\n' + '🆕 New Arrival – More photos and details coming soon';
 }
 function buildHtmlDescription(item){
   return buildFullDescription(item).split('\n\n')
